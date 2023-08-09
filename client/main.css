@@ -127,3 +127,12 @@ header{
   background-color: #ff3046;
   justify-self: flex-end;
 }
+
+.filter{
+  display: flex;
+  justify-content:center;
+}
+
+.filter > button{
+  background-color: #62807e;
+}
