@@ -1,6 +1,9 @@
 import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
-import { TasksCollection } from '/imports/api/TasksCollection';
+import { TasksCollection } from '/imports/db/TasksCollection';
+import { ServiceConfiguration } from 'meteor/service-configuration';
+import '/imports/api/tasksMethods';
+
 
 const SEED_USERNAME = 'admin';
 const SEED_PASSWORD = '123';
@@ -12,22 +15,29 @@ const insertTask = (taskText, user) =>
     createdAt: new Date(),
   });
 
-  Meteor.startup(() => {
-    if (!Accounts.findUserByUsername(SEED_USERNAME)) {
-      Accounts.createUser({
-        username: SEED_USERNAME,
-        password: SEED_PASSWORD,
-      });
-    }
-  
-    const user = Accounts.findUserByUsername(SEED_USERNAME) ;
+Meteor.startup(() => {
+  if (!Accounts.findUserByUsername(SEED_USERNAME)) { //Verifica se admin já existe
+    Accounts.createUser({
+      username: SEED_USERNAME,
+      password: SEED_PASSWORD,
+    });
+  }
 
-    if (TasksCollection.find().count() === 0) {
-      [
-        'First Task',
-        'Second Task',
-        'Third Task',
+  const user = Accounts.findUserByUsername(SEED_USERNAME);
 
-      ].forEach(taskText => insertTask(taskText, user));
+
+  ServiceConfiguration.configurations.upsert(
+    { service: 'github' },
+    {
+      $set: {
+        loginStyle: 'popup',
+        clientId: '51ce8cee7c9f51db605f',
+        secret: 'b7dded66009560bdf03337ca3f4eae4e3011968b'
+      },
     }
-  });
+  );
+
+  if (TasksCollection.find().count() === 0) {
+    [].forEach(taskText => insertTask(taskText, user));
+  }
+});

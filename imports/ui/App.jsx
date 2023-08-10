@@ -1,20 +1,16 @@
 import React, { Fragment, useState } from 'react';
 import { useTracker } from 'meteor/react-meteor-data';
-import { TasksCollection } from '/imports/api/TasksCollection';
+import { TasksCollection } from '/imports/db/TasksCollection';
 import { Task } from './Task';
 import { TaskForm } from './TaskForm';
 import { LoginForm } from './LoginForm';
+import { Meteor } from 'meteor/meteor';
 
-const toggleChecked = ({ _id, isChecked }) => {
+const toggleChecked = ({ _id, isChecked }) => 
+  Meteor.call('tasks.setIsChecked', _id, !isChecked);
 
-  TasksCollection.update(_id, {
-    $set: {
-      isChecked: !isChecked
-    }
-  });
-};
 
-const deleteTask = ({ _id }) => TasksCollection.remove(_id);
+const deleteTask = ({ _id }) => Meteor.call('tasks.remove', _id);
 
 
 export const App = () => {
@@ -29,18 +25,18 @@ export const App = () => {
   const pendingOnlyFilter = { ...hideCompletedFilter, ...userFilter }; //Exibe apenas as tarefas pendentes do usuário
 
   const tasks = useTracker(() => {
-    if(!user) return [];
-  
-    return TasksCollection.find(hideCompleted ? pendingOnlyFilter : {}, { sort: { createdAt: -1 } }).fetch();
+    if (!user) return [];
+
+    return TasksCollection.find(hideCompleted ? pendingOnlyFilter : userFilter, { sort: { createdAt: -1 } }).fetch();
   });
 
   const pendingTasksCount = useTracker(() => {
-    if(!user) return 0;
+    if (!user) return 0;
 
     TasksCollection.find(pendingOnlyFilter).count();
   });
   const pendingTasksTitle = `${pendingTasksCount ? ` (${pendingTasksCount})` : ''}`;
-  
+
   const logout = () => Meteor.logout();
 
   return (
@@ -57,9 +53,9 @@ export const App = () => {
         {user ? (
           <Fragment>
             <div className='user' onClick={logout}>
-              {user.username}🚪
+              {user.username || user.profile.name}🚪
             </div>
-            <TaskForm user = {user}/>
+            <TaskForm user={user} />
             <div className='filter'>
               <button onClick={() => setHideCompleted(!hideCompleted)}>
                 {hideCompleted ? 'Show All' : 'Hide Completed'}
