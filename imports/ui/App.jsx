@@ -6,7 +6,7 @@ import { TaskForm } from './TaskForm';
 import { LoginForm } from './LoginForm';
 import { Meteor } from 'meteor/meteor';
 
-const toggleChecked = ({ _id, isChecked }) => 
+const toggleChecked = ({ _id, isChecked }) =>
   Meteor.call('tasks.setIsChecked', _id, !isChecked);
 
 
@@ -18,26 +18,44 @@ export const App = () => {
   const user = useTracker(() => Meteor.user());
   const userFilter = user ? { userId: user._id } : {}; //Pega o user ID do usuário logado (se tiver)
 
-
   const hideCompletedFilter = { isChecked: { $ne: true } }; //Filtra apenas as tasks com isChecked igual a true
   const [hideCompleted, setHideCompleted] = useState(false); //Controla se as tarefas conlcuídas estão visíveis ou ocultas.
 
   const pendingOnlyFilter = { ...hideCompletedFilter, ...userFilter }; //Exibe apenas as tarefas pendentes do usuário
 
-  const tasks = useTracker(() => {
-    if (!user) return [];
+  const { tasks, pendingTasksCount, isLoading } = useTracker(() => {
 
-    return TasksCollection.find(hideCompleted ? pendingOnlyFilter : userFilter, { sort: { createdAt: -1 } }).fetch();
+    const noDataAvailable = { tasks: [], pendingTasksCount: 0 };
+
+    if (!Meteor.user()) {
+      return noDataAvailable;
+    }
+
+    const handler = Meteor.subscribe('tasks');
+
+    if (!handler.ready()) {
+      return { ...noDataAvailable, isLoading: true };
+    }
+
+    const tasks = TasksCollection.find(
+      hideCompleted ? pendingOnlyFilter : userFilter,
+      {
+        sort: { createdAt: -1 },
+      }
+    ).fetch();
+    
+    const pendingTasksCount = TasksCollection.find(pendingOnlyFilter).count();
+    
+
+    return { tasks, pendingTasksCount };
+
   });
 
-  const pendingTasksCount = useTracker(() => {
-    if (!user) return 0;
-
-    TasksCollection.find(pendingOnlyFilter).count();
-  });
   const pendingTasksTitle = `${pendingTasksCount ? ` (${pendingTasksCount})` : ''}`;
 
   const logout = () => Meteor.logout();
+
+
 
   return (
     <div className="app">
@@ -61,6 +79,9 @@ export const App = () => {
                 {hideCompleted ? 'Show All' : 'Hide Completed'}
               </button>
             </div>
+
+            {isLoading && <div className="loading">loading...</div>}
+
             <ul className="tasks">
               {tasks.map(task => <Task key={task._id} task={task} onCheckboxClick={toggleChecked} onDeleteClick={deleteTask} />)}
             </ul>
